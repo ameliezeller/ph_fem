@@ -44,33 +44,25 @@ I_v = 1/12 * (w_v^4 - (w_v - 2*t_v1)^4);
 % Torsion constant
 It_v = w_v*(w_v-t_v1)^3;
 
-% Node table
-n_stories = 12;
+%% Node table
+n_stories = 3;
 nodes = zeros(n_stories+1*4, 3);
 for i = 0:n_stories
     nodes(i*4+1:(i+1)*4,:) = [0 0 i*h_floor; w_floor 0 i*h_floor; w_floor w_floor i*h_floor; 0 w_floor i*h_floor];
 end
-    
-% Elements of a single module
-elems_mod = [1 5 1; 2 6 1; 3 7 1; 4 8 1; ...    % Vertical columns
-         5 9 1; 6 10 1; 7 11 1; 8 12 1; ...
-         9 13 1; 10 14 1; 11 15 1; 12 16 1; ...
-         5 6 2; 6 7 2; 7 8 2; 8 5 2; ...        % Horizontal bars
-         9 10 2; 10 11 2; 11 12 2; 12 9 2; ...
-         13 14 2; 14 15 2; 15 16 2; 16 13 2; ...
-         5 7 3; 6 8 3; ...                      % Horizontal diagonals
-         9 11 3; 10 12 3; ...
-         13 15 3; 14 16 3; ... 
-         1 14 4; 2 13 4; 2 15 4; 3 14 4; ...    % Vertical diagonals
-         3 16 4; 4 15 4; 4 13 4; 1 16 4];       
-% Full element table
-elems = [elems_mod; ...
-        [elems_mod(:, 1:2)+12 elems_mod(:, 3)]; ...
-        [elems_mod(:, 1:2)+24 elems_mod(:, 3)]; ...
-        [elems_mod(:, 1:2)+36 elems_mod(:, 3)]];
-                     
+%% Elements
+elems = [1 9 1; 2 10 1; 3 11 1; 4 12 1; ...    % Vertical columns
+    9 13 1; 10 14 1; 11 15 1; 12 16 1; ...
+    9 10 2; 10 11 2; 11 12 2; 12 9 2; ...      % Horizonzal bars
+    13 14 2; 14 15 2; 15 16 2; 16 13 2; ...
+    9 11 3; 10 12 3; ...                       % Horizontal diagonals
+    13 15 3; 14 16 3; ... 
+    1 14 4; 2 13 4; 2 15 4; 3 14 4; ...    % Vertical diagonals
+    3 16 4; 4 15 4; 4 13 4; 1 16 4];      
 
-% Element types
+vis_high_rise_building(nodes,elems)
+
+%% Element types
 % Euler-Bernouli beam
 column_v    = PH_FEM_Beam(4, 2, 2, myu_v, E, A_v, G, It_v, I_v, I_v, L_v);
 % Rod elements
@@ -78,13 +70,16 @@ bar_h       = PH_FEM_Link(2, myu_h, E, A_h, L_h);
 bar_dh      = PH_FEM_Link(2, myu_dh, E, A_dh, L_dh);
 diagonal    = PH_FEM_Link(2, myu_dv, E, A_dv, L_dv); 
 
-% FEM mesh
+
+%% FEM mesh
 mesh = PH_FEM_mesh(nodes, elems, {column_v, bar_h, bar_dh, diagonal});
-% Lock DOFs of lowermost nodes
+%% Lock DOFs of lowermost nodes
 mesh.fixNodeDOFs(nodes(1,:), [1 1 1 0 0 1]);
 mesh.fixNodeDOFs(nodes(2,:), [1 1 1 0 0 1]);
 mesh.fixNodeDOFs(nodes(3,:), [1 1 1 0 0 1]);
 mesh.fixNodeDOFs(nodes(4,:), [1 1 1 0 0 1]);
+
+
 % Add Rayleigh damping 
 mesh.addRayleighDamping(0.05, 0.005);
 % Add external forces acting on global DOFs
@@ -108,48 +103,11 @@ D_ph = mesh.R(1:mesh.n/2, 1:mesh.n/2);
 
 
 
-%% Conventional FE
-load elem_types type_*
-nodes_fe = [linspace(1, length(nodes), length(nodes))', nodes];
-elems_fe = [linspace(1, length(elems_mod), length(elems_mod))', elems_mod, ones(length(elems_mod), 1)*type_beam, ones(length(elems_mod),1)*type_actparallel]; 
-elems_fe(13:end, 5) = type_link;
-elems_fe(13:end, 6) = type_actnone; 
-
-elems_fe = [elems_fe; ...
-            elems_fe(:,1:3)+12, elems_fe(:, 4:end); ... 
-            elems_fe(:,1:3)+24, elems_fe(:, 4:end); ... 
-            elems_fe(:,1:3)+36, elems_fe(:, 4:end)];
-
-global_dof_order = nodes_fe(:,1)';
-
-Re  = 355e6;          % yield strength of S355 steel
-props = [1, E, rho     , A_v , I_v, I_v, G, It_v, Re; ... % vertical columns
-         2, E, rho     , A_h , 0, 0, 0, 0, Re; ...  % horizontal bars
-         3, E, rho_dh  , A_dh , 0, 0, 0, 0, Re; ... % horizonta diagonals
-         4, E, rho     , A_dv , 0, 0, 0, 0, Re];
-[M_fe, K_fe, ~, ~, ~] = truss3ext(nodes_fe, elems_fe, props, global_dof_order, 'srel');
-M_fe = full(M_fe);
-K_fe = full(K_fe);
-
-fixed_dof = [1:3, 6, 7:9, 12, 13:15, 18, 19:21, 24];
-
-M_fe(:, fixed_dof) = [];
-K_fe(:, fixed_dof) = [];
-M_fe(fixed_dof, :) = [];
-K_fe(fixed_dof, :) = [];
-
 %% Modal Analysis
 highestMode = 10;
 % Get the eigenvalues
 lambda = mesh.getSmallestMagnitudeEigenvalues(highestMode);
 omega_Hz_ph = sqrt(diag(lambda))/2/pi;
-
-% Compute the eigenvalues of the conventional FE model for comparison
-opts.v0 = ones(size(M_ph, 1),1);
-opts.isreal = 1;
-[~,lambda] = eigs(K_fe, M_fe, highestMode, 'smallestabs',opts); 
-[omega,~] = sort(sqrt(diag(lambda)));
-omega_Hz_fe = omega/2/pi;
 
 
 %% Simulation
@@ -162,47 +120,40 @@ R = mesh.R;
 
 A = (J-R)*Q;
 
-n_dofs = mesh.n/2;
-D_fe = M_fe * 0.05 + K_fe * 0.005;
-A_fe = [-M_fe\D_fe,  -M_fe\K_fe; ...
-        eye(n_dofs), zeros(n_dofs)];
-
-
 % Initial displacement due to wind in x-direction
+n_dofs = mesh.n/2;
 wind_dofs_x = sort([(5:4:49).*6-5 (8:4:52).*6-5]-24+8);
 E_wind = zeros(n_dofs, 1);
-for i=1:12
+for i=1:3
     E_wind(wind_dofs_x(2*i-1), 1) = i/12;
     E_wind(wind_dofs_x(2*i), 1) = i/12;
 end
-E_wind_fe = [M_fe\E_wind; zeros(mesh.n/2, 1)];
 E_wind = [E_wind; zeros(mesh.n/2, 1)];
+E_wind = [E_wind(1:length(A(:,1)),1)];
 x0_ph = -A\E_wind*0.2e5;
-x0_fe = -A_fe\E_wind_fe*0.2e5;
-
+%%
 time = 1:0.01:5; 
 odefun_ph = @(t, x) A*x;
-odefun_fe = @(t, x) A_fe*x;
 jacobian_ph = @(t, x) A;
 
 y_ph = linear_gls(odefun_ph, jacobian_ph, time, x0_ph, 2);
 
-%% Plots
-c_x = 1:6:6*13*4;
-c_x(1:4) = [];
-c_x = c_x - 16;
+%%
 
-x_ph = y_ph(:, n_dofs+1:end);
-x_ph = x_ph(:, c_x);
+y_ph_topNode1 = y_ph(:,end);
+y_ph_topNode2 = y_ph(:,end-1);
+y_ph_topNode3 = y_ph(:,end-2);
+y_ph_topNode4 = y_ph(:,end-3);
 
-figure();
-plot(time, 1e3.*x_ph(:, end-3:end));
-xlabel('time in s');
-ylabel('x-displacement in mm');
+figure
+hold all
+plot(time,y_ph_topNode1)
+plot(time,y_ph_topNode2)
+plot(time,y_ph_topNode3)
+plot(time,y_ph_topNode4)
 
-figure();
-H = zeros(length(time), 1);
-for k=1:length(time)
-    H(k) = 0.5*y_ph(k,:)*mesh.Q*y_ph(k,:)';
-end
-plot(time, 1e-3.*H);
+
+
+
+
+
