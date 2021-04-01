@@ -206,3 +206,5 @@ for k=1:length(time)
     H(k) = 0.5*y_ph(k,:)*mesh.Q*y_ph(k,:)';
 end
 plot(time, 1e-3.*H);
+
+

@@ -126,17 +126,19 @@ R = mesh.R;
 
 A = (J-R)*Q;
 
-% Initial displacement due to pedestrians in z-direction
-n_dofs = mesh.n/2;
-wind_dofs_x = sort([(5:4:49).*6-5 (8:4:52).*6-5]-24+8);
-E_wind = zeros(n_dofs, 1);
-for i=1:3
-    E_wind(wind_dofs_x(2*i-1), 1) = i/12;
-    E_wind(wind_dofs_x(2*i), 1) = i/12;
-end
-E_wind = [E_wind; zeros(mesh.n/2, 1)];
-E_wind = [E_wind(1:length(A(:,1)),1)];
-x0_ph = -A\E_wind*0.2e5;
+% % Initial displacement due to pedestrians in z-direction
+% n_dofs = mesh.n/2; % mesh < PH_LinearSystem < PH_System, n ist Systemordnung
+% wind_dofs_x = sort([(5:4:49).*6-5 (8:4:52).*6-5]-24+8);
+% E_wind = zeros(n_dofs, 1);
+% for i=1:3
+%     E_wind(wind_dofs_x(2*i-1), 1) = i/12;
+%     E_wind(wind_dofs_x(2*i), 1) = i/12;
+% end
+% E_wind = [E_wind; zeros(mesh.n/2, 1)];
+% E_wind = [E_wind(1:length(A(:,1)),1)];
+% x0_ph = -A\E_wind*0.2e5;
+x0_ph = 7e4*ones(28,1);
+
 %%
 time = 1:0.01:5; 
 odefun_ph = @(t, x) A*x;
