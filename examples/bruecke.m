@@ -70,7 +70,9 @@ vis_high_rise_building(nodes,elems)
 
 %% Element types
 % Euler-Bernouli beam
-column_v    = PH_FEM_Beam(4, 2, 2, myu_v, E, A_v, G, It_v, I_v, I_v, L_v);
+% column_v    = PH_FEM_Beam(4, 2, 2, myu_v, E, A_v, G, It_v, I_v, I_v, L_v);
+column_v    = PH_FEM_Link(2, myu_h, E, A_h, L_h); 
+
 % Rod elements
 bar_h       = PH_FEM_Link(2, myu_h, E, A_h, L_h); 
 % bar_dh      = PH_FEM_Link(2, myu_dh, E, A_dh, L_dh);
@@ -110,7 +112,7 @@ D_ph = mesh.R(1:mesh.n/2, 1:mesh.n/2);
 
 
 %% Modal Analysis
-highestMode = 10;
+highestMode = 4;
 % Get the eigenvalues
 lambda = mesh.getSmallestMagnitudeEigenvalues(highestMode);
 omega_Hz_ph = sqrt(diag(lambda))/2/pi;
@@ -137,7 +139,7 @@ A = (J-R)*Q;
 % E_wind = [E_wind; zeros(mesh.n/2, 1)];
 % E_wind = [E_wind(1:length(A(:,1)),1)];
 % x0_ph = -A\E_wind*0.2e5;
-x0_ph = 7e4*ones(28,1);
+x0_ph = 7e4*ones(length(A(:,1)),1);
 
 %%
 time = 1:0.01:5; 
@@ -148,19 +150,10 @@ y_ph = linear_gls(odefun_ph, jacobian_ph, time, x0_ph, 2);
 
 %%
 
-y_ph_topNode1 = y_ph(:,end);
-y_ph_topNode2 = y_ph(:,end-1);
-y_ph_topNode3 = y_ph(:,end-2);
-y_ph_topNode4 = y_ph(:,end-3);
 
 figure
 hold all
 plot(time,y_ph)
-% plot(time,y_ph_topNode1)
-% plot(time,y_ph_topNode2)
-% plot(time,y_ph_topNode3)
-% plot(time,y_ph_topNode4)
-
 
 
 
