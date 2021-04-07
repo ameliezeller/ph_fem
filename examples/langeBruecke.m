@@ -52,7 +52,8 @@ It_v = w_v*(w_v-t_v1)^3;
 % end
 
 nodes = [0 0 h_floor; w_floor 0 h_floor; 2*w_floor 0 h_floor; 3*w_floor 0 h_floor; ...
-    w_floor 0 0; 2*w_floor 0 0];
+    4*w_floor 0 h_floor; 5*w_floor 0 h_floor; 6*w_floor 0 h_floor; 7*w_floor 0 h_floor; ...
+    w_floor 0 0; 2*w_floor 0 0; 3*w_floor 0 0; 4*w_floor 0 0; 5*w_floor 0 0; 6*w_floor 0 0];
 
 
 %% Elements
@@ -64,7 +65,8 @@ nodes = [0 0 h_floor; w_floor 0 h_floor; 2*w_floor 0 h_floor; 3*w_floor 0 h_floo
 %     13 15 3; 14 16 3; ... 
 %     1 14 4; 2 13 4; 2 15 4; 3 14 4; ...    % Vertical diagonals
 %     3 16 4; 4 15 4; 4 13 4; 1 16 4];    
-elems = [1 2 1; 2 3 1; 3 4 1; 5 2 2; 6 3 2];
+elems = [1 2 1; 2 3 1; 3 4 1; 4 5 1; 5 6 1; 6 7 1; 7 8 1; ...
+     9 2 2; 10 3 2; 11 4 2; 12 5 2; 13 6 2; 14 7 2];
 
 vis_high_rise_building(nodes,elems)
 
@@ -83,9 +85,13 @@ bar_h       = PH_FEM_Link(2, myu_h, E, A_h, L_h);
 mesh = PH_FEM_mesh(nodes, elems, {column_v, bar_h}); %, bar_dh, diagonal});
 %% Lock DOFs of lowermost nodes
 mesh.fixNodeDOFs(nodes(1,:), [1 1 1 1 0 1]);
-% mesh.fixNodeDOFs(nodes(4,:), [1 1 1 1 0 1]);
-mesh.fixNodeDOFs(nodes(5,:), [1 1 1 1 0 1]);
-mesh.fixNodeDOFs(nodes(6,:), [1 1 1 1 0 1]);
+mesh.fixNodeDOFs(nodes(8,:), [1 1 1 1 0 1]);
+mesh.fixNodeDOFs(nodes(9,:), [1 1 1 1 0 1]);
+mesh.fixNodeDOFs(nodes(10,:), [1 1 1 1 0 1]);
+mesh.fixNodeDOFs(nodes(11,:), [1 1 1 1 0 1]);
+mesh.fixNodeDOFs(nodes(12,:), [1 1 1 1 0 1]);
+mesh.fixNodeDOFs(nodes(13,:), [1 1 1 1 0 1]);
+mesh.fixNodeDOFs(nodes(14,:), [1 1 1 1 0 1]);
 
 
 % Add Rayleigh damping 
@@ -129,7 +135,7 @@ R = mesh.R;
 A = (J-R)*Q;
 
 % % Initial displacement due to pedestrians in z-direction
-% n_dofs = mesh.n/2; % mesh < PH_LinearSystem < PH_System, n ist Systemordnung
+nDofs = mesh.n/2; % mesh < PH_LinearSystem < PH_System, n ist Systemordnung
 % wind_dofs_x = sort([(5:4:49).*6-5 (8:4:52).*6-5]-24+8);
 % E_wind = zeros(n_dofs, 1);
 % for i=1:3
@@ -139,11 +145,11 @@ A = (J-R)*Q;
 % E_wind = [E_wind; zeros(mesh.n/2, 1)];
 % E_wind = [E_wind(1:length(A(:,1)),1)];
 % x0_ph = -A\E_wind*0.2e5;
-x0_ph = zeros(length(A(:,1)),1);
-x0_ph(17) = 7e3;
+x0_ph = zeros(2*nDofs,1);
+x0_ph(nDofs+15) = 7e2;
 
 %%
-time = 1:0.001:2; 
+time = 1:0.01:5; 
 odefun_ph = @(t, x) A*x;
 jacobian_ph = @(t, x) A;
 
@@ -170,14 +176,29 @@ end
 % of a row of y_ph is the angle at node 1 around the y axis
 %%
 figure
-len_y_ph = length(y_ph(1,:));
-for idxRow=1:len_y_ph/2
-    subplot(len_y_ph/2,1,idxRow)
-    hold all
-    plot(time,y_ph(:,len_y_ph/2+idxRow))
-    axis([time(1) 1.5 -1000 1000])
-    ylabel(namesOutputPorts{idxRow})
+% len_y_ph = length(y_ph(1,:));
+nRows = ceil(sqrt(nDofs));
+for idxRow = 1:nRows
+    for idxCol = 1:nRows
+        if (idxRow-1)*nRows+idxCol > nDofs
+            break
+        end
+        subplot(nRows, nRows, (idxRow-1)*nRows+idxCol)
+        hold all
+        plot(time,y_ph(:,nDofs+(idxRow-1)*nRows+idxCol))
+        axis([time(1) 1.5 -1000 1000])
+        ylabel(namesOutputPorts{(idxRow-1)*nRows+idxCol})
+    end
 end
+%%
+saveas(gcf,'initDispl_n4_Fy.png')
+% for idxRow=1:len_y_ph/2
+%     subplot(len_y_ph/2,1,idxRow)
+%     hold all
+%     plot(time,y_ph(:,len_y_ph/2+idxRow))
+%     axis([time(1) 1.5 -1000 1000])
+%     ylabel(namesOutputPorts{idxRow})
+% end
 
 
 

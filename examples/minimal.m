@@ -1,6 +1,6 @@
 clear all;
 close all;
-
+%%
 E = 210e9;                          % Young's modulus (for steel)
 rho = 7850;                         % Density
 rho_dh = 7900;                      % Density horizontal diagonals
@@ -20,7 +20,7 @@ t_v2    = 0.008;    % Upper column wall thickness
 t_h     = 0.008;    % Horizontal bar wall thickness
 
 h_floor = 3;
-w_floor = 4.75;
+w_floor = 3;
 
 L_v  = h_floor;           % Length of vertical columns
 L_h  = w_floor;    
@@ -45,39 +45,50 @@ I_v = 1/12 * (w_v^4 - (w_v - 2*t_v1)^4);
 It_v = w_v*(w_v-t_v1)^3;
 
 %% Node table
-n_stories = 3;
-nodes = zeros(n_stories+1*4, 3);
-for i = 0:n_stories
-    nodes(i*4+1:(i+1)*4,:) = [0 0 i*h_floor; w_floor 0 i*h_floor; w_floor w_floor i*h_floor; 0 w_floor i*h_floor];
-end
+% n_stories = 3;
+% nodes = zeros(n_stories+1*4, 3);
+% for i = 0:n_stories
+%     nodes(i*4+1:(i+1)*4,:) = [0 0 i*h_floor; w_floor 0 i*h_floor; w_floor w_floor i*h_floor; 0 w_floor i*h_floor];
+% end
+
+nodes = [0 0 h_floor; w_floor 0 h_floor];
+% nodes = [0 0 h_floor; w_floor 0 h_floor; 2*w_floor 0 h_floor; 3*w_floor 0 h_floor; ...
+%     w_floor 0 0; 2*w_floor 0 0];
+
+
 %% Elements
-elems = [1 9 1; 2 10 1; 3 11 1; 4 12 1; ...    % Vertical columns
-    9 13 1; 10 14 1; 11 15 1; 12 16 1; ...
-    9 10 2; 10 11 2; 11 12 2; 12 9 2; ...      % Horizonzal bars
-    13 14 2; 14 15 2; 15 16 2; 16 13 2; ...
-    9 11 3; 10 12 3; ...                       % Horizontal diagonals
-    13 15 3; 14 16 3; ... 
-    1 14 4; 2 13 4; 2 15 4; 3 14 4; ...    % Vertical diagonals
-    3 16 4; 4 15 4; 4 13 4; 1 16 4];      
+% elems = [1 9 1; 2 10 1; 3 11 1; 4 12 1; ...    % Vertical columns
+%     9 13 1; 10 14 1; 11 15 1; 12 16 1; ...
+%     9 10 2; 10 11 2; 11 12 2; 12 9 2; ...      % Horizonzal bars
+%     13 14 2; 14 15 2; 15 16 2; 16 13 2; ...
+%     9 11 3; 10 12 3; ...                       % Horizontal diagonals
+%     13 15 3; 14 16 3; ... 
+%     1 14 4; 2 13 4; 2 15 4; 3 14 4; ...    % Vertical diagonals
+%     3 16 4; 4 15 4; 4 13 4; 1 16 4];    
+elems = [1 2 1];
+% elems = [1 2 1; 2 3 1; 3 4 1; 5 2 2; 6 3 2];
 
 vis_high_rise_building(nodes,elems)
 
 %% Element types
 % Euler-Bernouli beam
 column_v    = PH_FEM_Beam(4, 2, 2, myu_v, E, A_v, G, It_v, I_v, I_v, L_v);
+% column_v    = PH_FEM_Link(2, myu_h, E, A_h, L_h); 
+
 % Rod elements
-bar_h       = PH_FEM_Link(2, myu_h, E, A_h, L_h); 
-bar_dh      = PH_FEM_Link(2, myu_dh, E, A_dh, L_dh);
-diagonal    = PH_FEM_Link(2, myu_dv, E, A_dv, L_dv); 
+% bar_h       = PH_FEM_Link(2, myu_h, E, A_h, L_h); 
+% bar_dh      = PH_FEM_Link(2, myu_dh, E, A_dh, L_dh);
+% diagonal    = PH_FEM_Link(2, myu_dv, E, A_dv, L_dv); 
 
 
 %% FEM mesh
-mesh = PH_FEM_mesh(nodes, elems, {column_v, bar_h, bar_dh, diagonal});
+mesh = PH_FEM_mesh(nodes, elems, {column_v}); %, bar_dh, diagonal});
+% mesh = PH_FEM_mesh(nodes, elems, {column_v, bar_h}); %, bar_dh, diagonal});
 %% Lock DOFs of lowermost nodes
-mesh.fixNodeDOFs(nodes(1,:), [1 1 1 0 0 1]);
-mesh.fixNodeDOFs(nodes(2,:), [1 1 1 0 0 1]);
-mesh.fixNodeDOFs(nodes(3,:), [1 1 1 0 0 1]);
-mesh.fixNodeDOFs(nodes(4,:), [1 1 1 0 0 1]);
+mesh.fixNodeDOFs(nodes(1,:), [1 1 1 1 1 1]);
+% mesh.fixNodeDOFs(nodes(4,:), [1 1 1 1 0 1]);
+% mesh.fixNodeDOFs(nodes(5,:), [1 1 1 1 0 1]);
+% mesh.fixNodeDOFs(nodes(6,:), [1 1 1 1 0 1]);
 
 
 % Add Rayleigh damping 
@@ -104,7 +115,8 @@ D_ph = mesh.R(1:mesh.n/2, 1:mesh.n/2);
 
 
 %% Modal Analysis
-highestMode = 10;
+highestMode = 1;
+% highestMode = 4;
 % Get the eigenvalues
 lambda = mesh.getSmallestMagnitudeEigenvalues(highestMode);
 omega_Hz_ph = sqrt(diag(lambda))/2/pi;
@@ -120,17 +132,24 @@ R = mesh.R;
 
 A = (J-R)*Q;
 
-% Initial displacement due to wind in x-direction
-n_dofs = mesh.n/2;
-wind_dofs_x = sort([(5:4:49).*6-5 (8:4:52).*6-5]-24+8);
-E_wind = zeros(n_dofs, 1);
-for i=1:3
-    E_wind(wind_dofs_x(2*i-1), 1) = i/12;
-    E_wind(wind_dofs_x(2*i), 1) = i/12;
-end
-E_wind = [E_wind; zeros(mesh.n/2, 1)];
-E_wind = [E_wind(1:length(A(:,1)),1)];
-x0_ph = -A\E_wind*0.2e5;
+% % Initial displacement due to pedestrians in z-direction
+% n_dofs = mesh.n/2; % mesh < PH_LinearSystem < PH_System, n ist Systemordnung
+% wind_dofs_x = sort([(5:4:49).*6-5 (8:4:52).*6-5]-24+8);
+% E_wind = zeros(n_dofs, 1);
+% for i=1:3
+%     E_wind(wind_dofs_x(2*i-1), 1) = i/12;
+%     E_wind(wind_dofs_x(2*i), 1) = i/12;
+% end
+% E_wind = [E_wind; zeros(mesh.n/2, 1)];
+% E_wind = [E_wind(1:length(A(:,1)),1)];
+% x0_ph = -A\E_wind*0.2e5;
+% x0_ph = 7e4*ones(length(A(:,1)),1);
+% x0_ph = [1000 0 0 0]';
+% x0_ph = [0 1000 0 0]';
+% x0_ph = [0 0 70000 0]';
+% x0_ph = [0 0 0 70000]';
+x0_ph = [zeros(1,6) 0 0 0 1e7 0 0]';
+% x0_ph = [0 1000]';
 %%
 time = 1:0.01:5; 
 odefun_ph = @(t, x) A*x;
@@ -140,18 +159,15 @@ y_ph = linear_gls(odefun_ph, jacobian_ph, time, x0_ph, 2);
 
 %%
 
-y_ph_topNode1 = y_ph(:,end);
-y_ph_topNode2 = y_ph(:,end-1);
-y_ph_topNode3 = y_ph(:,end-2);
-y_ph_topNode4 = y_ph(:,end-3);
 
 figure
-hold all
-plot(time,y_ph_topNode1)
-plot(time,y_ph_topNode2)
-plot(time,y_ph_topNode3)
-plot(time,y_ph_topNode4)
-
+len_y_ph = length(y_ph(1,:));
+for idxRow=1:len_y_ph/2
+    subplot(len_y_ph/2,1,idxRow)
+    hold all
+    plot(time,y_ph(:,len_y_ph/2+idxRow))
+    axis([time(1) time(end) -1000 1000])
+end
 
 
 

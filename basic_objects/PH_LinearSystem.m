@@ -460,7 +460,7 @@ classdef PH_LinearSystem < PH_System
             %obj.C(abs(obj.C) < treshhold) = 0;
         end
         
-        % Coupling constraints for flows, effors, inputs & outputs
+        % Coupling constraints for flows, efforts, inputs & outputs
         function addCouplingConstraints(obj, C_e, C_f, C_u, C_y) 
             if ~isempty(C_e)
                 if ~ismatrix(C_e) || size(C_e, 2) ~= obj.n 
@@ -900,7 +900,7 @@ classdef PH_LinearSystem < PH_System
         end
         
         % Assuming the system is in some kind of balanced form, use the
-        % effort-constraint method to eliminate the efforcts e_c
+        % effort-constraint method to eliminate the efforts e_c
         % NOTE: implemented according to Polyuga & v. d. Schaft 2011
         % NOTE: MOR is short for model order reduction
         function effortConstraintMOR(obj, e_2)
@@ -989,6 +989,16 @@ classdef PH_LinearSystem < PH_System
             ports = obj.getPortsForIOPairs(IOPairs);
             for p = 1:length(ports)
                 names{p} = obj.ports{ports(p)}.inputName;
+            end
+        end
+        
+        % Returns the output names of the output specified by IOPairs in the
+        % form of a cell array of strings
+        function names = getOutputNames(obj, IOPairs)
+            names = cell(1, length(IOPairs));
+            ports = obj.getPortsForIOPairs(IOPairs);
+            for p = 1:length(ports)
+                names{p} = obj.ports{ports(p)}.outputName;
             end
         end
         

@@ -68,7 +68,8 @@ elems = [elems_mod; ...
         [elems_mod(:, 1:2)+12 elems_mod(:, 3)]; ...
         [elems_mod(:, 1:2)+24 elems_mod(:, 3)]; ...
         [elems_mod(:, 1:2)+36 elems_mod(:, 3)]];
-                     
+
+vis_high_rise_building(nodes, elems)
 
 % Element types
 % Euler-Bernouli beam
