@@ -1,5 +1,5 @@
 clear all;
-close all;
+% close all;
 %%
 E = 210e9;                          % Young's modulus (for steel)
 rho = 7850;                         % Density
@@ -133,7 +133,7 @@ R = mesh.R;
 A = (J-R)*Q;
 
 % % Initial displacement due to pedestrians in z-direction
-% n_dofs = mesh.n/2; % mesh < PH_LinearSystem < PH_System, n ist Systemordnung
+nDofs = mesh.n/2; % mesh < PH_LinearSystem < PH_System, n ist Systemordnung
 % wind_dofs_x = sort([(5:4:49).*6-5 (8:4:52).*6-5]-24+8);
 % E_wind = zeros(n_dofs, 1);
 % for i=1:3
@@ -148,8 +148,8 @@ A = (J-R)*Q;
 % x0_ph = [0 1000 0 0]';
 % x0_ph = [0 0 70000 0]';
 % x0_ph = [0 0 0 70000]';
-x0_ph = [zeros(1,6) 0 0 0 1e7 0 0]';
-% x0_ph = [0 1000]';
+x0_ph = zeros(2*nDofs,1);
+x0_ph(nDofs+2) = 7e2;
 %%
 time = 1:0.01:5; 
 odefun_ph = @(t, x) A*x;
@@ -158,16 +158,51 @@ jacobian_ph = @(t, x) A;
 y_ph = linear_gls(odefun_ph, jacobian_ph, time, x0_ph, 2);
 
 %%
-
-
-figure
-len_y_ph = length(y_ph(1,:));
-for idxRow=1:len_y_ph/2
-    subplot(len_y_ph/2,1,idxRow)
-    hold all
-    plot(time,y_ph(:,len_y_ph/2+idxRow))
-    axis([time(1) time(end) -1000 1000])
+%%
+% get input port names
+nDofs = mesh.n/2;
+namesInputPorts = cell(nDofs,1);
+for idxPorts = 1:nDofs
+    namesInputPorts{idxPorts} = char(mesh.getInputNames(idxPorts));
 end
+
+% get output port names
+nDofs = mesh.n/2;
+namesOutputPorts = cell(nDofs,1);
+for idxPorts = 1:nDofs
+    namesOutputPorts{idxPorts} = char(mesh.getOutputNames(idxPorts));
+end
+
+% y_ph is the solution, hence the state and has length 2*nDofs, the first
+% half is Mqdot, the second half is q, the output ports are qdot, hence if
+% the first output port is called n1_wy, the first entry of the second half
+% of a row of y_ph is the angle at node 1 around the y axis
+%%
+figure
+% len_y_ph = length(y_ph(1,:));
+nRows = ceil(sqrt(nDofs));
+for idxRow = 1:nRows
+    for idxCol = 1:nRows
+        if (idxRow-1)*nRows+idxCol > nDofs
+            break
+        end
+        subplot(nRows, nRows, (idxRow-1)*nRows+idxCol)
+        hold all
+        plot(time,y_ph(:,nDofs+(idxRow-1)*nRows+idxCol))
+        axis([time(1) 1.5 -1000 1000])
+        ylabel(namesOutputPorts{(idxRow-1)*nRows+idxCol})
+    end
+end
+%%
+saveas(gcf,'initDispl_n4_Fy.png')
+% for idxRow=1:len_y_ph/2
+%     subplot(len_y_ph/2,1,idxRow)
+%     hold all
+%     plot(time,y_ph(:,len_y_ph/2+idxRow))
+%     axis([time(1) 1.5 -1000 1000])
+%     ylabel(namesOutputPorts{idxRow})
+% end
+
 
 
 
